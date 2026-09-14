@@ -117,11 +117,18 @@
     return item.getAttribute('aria-expanded') === 'true';
   }
 
-  /** A node is visible when every ancestor node is expanded. */
+  /**
+   * A node is visible when it is not hidden by the filter and every ancestor
+   * is expanded and not hidden either. The hidden attribute is what the
+   * filter writes; it removes the node from the accessibility tree as well.
+   */
   function isVisibleItem(item) {
+    if (item.hidden) {
+      return false;
+    }
     var ancestor = parentItem(item);
     while (ancestor) {
-      if (!isExpanded(ancestor)) {
+      if (ancestor.hidden || !isExpanded(ancestor)) {
         return false;
       }
       ancestor = parentItem(ancestor);
@@ -294,6 +301,10 @@
     if (statusEl.textContent.trim() !== text) {
       statusEl.textContent = text;
     }
+    var summary = document.getElementById('region-summary');
+    if (summary) {
+      summary.textContent = selected + ' of ' + totalItems + ' selected';
+    }
   }
 
   /**
@@ -308,6 +319,9 @@
     statusTimer = setTimeout(function () {
       statusTimer = null;
       renderStatus();
+      if (currentFilter() !== 'all') {
+        applyFilter();
+      }
     }, STATUS_DEBOUNCE_MS);
   }
 
@@ -485,6 +499,262 @@
       toggleChecked(item);
     }
   });
+
+  /* ------------------------------------------------------ select field ---- */
+
+  var toggle = document.getElementById('region-toggle');
+  var panel = document.getElementById('region-panel');
+  var searchInput = document.getElementById('region-search');
+  var searchStatus = document.getElementById('search-status');
+  var prevBtn = document.getElementById('result-prev');
+  var nextBtn = document.getElementById('result-next');
+
+  function setPanelOpen(open) {
+    if (!toggle || !panel) {
+      return;
+    }
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    panel.hidden = !open;
+  }
+
+  if (toggle && panel) {
+    toggle.addEventListener('click', function () {
+      var open = toggle.getAttribute('aria-expanded') !== 'true';
+      setPanelOpen(open);
+      if (open && searchInput) {
+        searchInput.focus();
+      }
+    });
+
+    // Escape closes the panel from anywhere inside it and returns focus to
+    // the button. In a non-empty search box the first Escape only clears the
+    // box (the native type="search" behaviour), the second one closes.
+    panel.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      if (event.target === searchInput && searchInput.value !== '') {
+        searchInput.value = '';
+        runSearch();
+        event.preventDefault();
+        return;
+      }
+      event.preventDefault();
+      setPanelOpen(false);
+      toggle.focus();
+    });
+  }
+
+  /* -------------------------------------------------------------- filter -- */
+
+  function currentFilter() {
+    var checked = document.querySelector('input[name="region-filter"]:checked');
+    return checked ? checked.value : 'all';
+  }
+
+  function leafPassesFilter(item, filter) {
+    var checked = item.getAttribute('aria-checked') === 'true';
+    return filter === 'all' || (filter === 'selected') === checked;
+  }
+
+  /**
+   * Hide leaves that do not pass the filter, and parents that have no visible
+   * descendant left. The focused node is always kept visible, so unticking a
+   * node under "Selected only" does not pull the focus out from under the
+   * user; it disappears the next time the filter is applied.
+   *
+   * aria-posinset / aria-setsize are recomputed over the visible siblings,
+   * otherwise "2 of 3" would be announced for a node that is now alone.
+   */
+  function applyFilter() {
+    var filter = currentFilter();
+    var focused = document.activeElement;
+    var keep = focused && tree.contains(focused) ? focused : null;
+
+    function visit(item) {
+      var children = childItems(item);
+      var show;
+      if (children.length === 0) {
+        show = leafPassesFilter(item, filter);
+      } else {
+        show = children.map(visit).some(Boolean);
+      }
+      if (keep && (item === keep || item.contains(keep))) {
+        show = true;
+      }
+      item.hidden = !show;
+      return show;
+    }
+    rootItems().forEach(visit);
+
+    function renumber(siblings) {
+      var shown = siblings.filter(function (s) { return !s.hidden; });
+      shown.forEach(function (s, i) {
+        s.setAttribute('aria-posinset', String(i + 1));
+        s.setAttribute('aria-setsize', String(shown.length));
+      });
+    }
+    renumber(rootItems());
+    allItems().forEach(function (item) {
+      if (!isLeaf(item)) {
+        renumber(childItems(item));
+      }
+    });
+
+    // The roving tabindex must never sit on a hidden node.
+    var tabbable = allItems().filter(function (i) { return i.getAttribute('tabindex') === '0'; })[0];
+    if (!tabbable || tabbable.hidden || !isVisibleItem(tabbable)) {
+      var first = visibleItems()[0];
+      allItems().forEach(function (i) {
+        i.setAttribute('tabindex', i === first ? '0' : '-1');
+      });
+    }
+  }
+
+  function shownLeafCount() {
+    return leafItems().filter(function (i) { return !i.hidden; }).length;
+  }
+
+  toArray(document.querySelectorAll('input[name="region-filter"]')).forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      applyFilter();
+      // Re-run the search so its matches only cover the nodes still shown,
+      // and let that announcement carry the new count.
+      if (searchInput && searchInput.value.trim() !== '') {
+        runSearch();
+      } else {
+        announceSearch('Showing ' + shownLeafCount() + ' of ' + totalItems + ' regions');
+      }
+    });
+  });
+
+  var selectAllBtn = document.getElementById('select-all');
+  var clearAllBtn = document.getElementById('clear-all');
+
+  function setAllVisible(checked) {
+    // Only the leaves that the filter shows are touched, so "Select all"
+    // under "Not selected only" selects exactly what the user is looking at.
+    leafItems().forEach(function (leaf) {
+      if (!leaf.hidden) {
+        setSubtreeChecked(leaf, checked);
+        refreshAncestors(leaf);
+      }
+    });
+    scheduleStatus();
+  }
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener('click', function () { setAllVisible(true); });
+  }
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', function () { setAllVisible(false); });
+  }
+
+  /* -------------------------------------------------------------- search -- */
+
+  var SEARCH_DEBOUNCE_MS = 300;
+  var searchTimer = null;
+  var matches = [];
+
+  function normalise(text) {
+    return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }
+
+  function announceSearch(text) {
+    if (searchStatus && searchStatus.textContent.trim() !== text) {
+      searchStatus.textContent = text;
+    }
+  }
+
+  /**
+   * Substring search over the labels of every node the filter shows.
+   * Matches get a highlight class and their ancestors are expanded, so every
+   * hit is reachable with the arrow keys. Nothing is hidden by the search:
+   * a match keeps its country and region around it for context. The count is
+   * announced through the polite live region next to the box.
+   */
+  function runSearch() {
+    var query = searchInput ? searchInput.value.trim() : '';
+    var needle = normalise(query);
+
+    matches = [];
+    allItems().forEach(function (item) {
+      var hit = needle !== '' && !item.hidden && normalise(labelOf(item)).indexOf(needle) !== -1;
+      item.classList.toggle('tree__item--match', hit);
+      if (hit) {
+        matches.push(item);
+        var ancestor = parentItem(item);
+        while (ancestor) {
+          setExpanded(ancestor, true);
+          ancestor = parentItem(ancestor);
+        }
+      }
+    });
+
+    var none = matches.length === 0;
+    if (prevBtn) { prevBtn.disabled = none; }
+    if (nextBtn) { nextBtn.disabled = none; }
+
+    if (needle === '') {
+      announceSearch('');
+    } else if (none) {
+      announceSearch('No results for “' + query + '”');
+    } else {
+      announceSearch(matches.length + (matches.length === 1 ? ' result' : ' results') + ' for “' + query + '”');
+    }
+  }
+
+  /**
+   * Move focus to the next (direction 1) or previous (direction -1) match,
+   * counted from the node that currently holds the roving tabindex and
+   * wrapping around at either end. The position is announced as well, because
+   * the focused node's name alone does not say which hit it is.
+   */
+  function stepResult(direction) {
+    if (!matches.length) {
+      return;
+    }
+    var all = allItems();
+    var current = all.filter(function (i) { return i.getAttribute('tabindex') === '0'; })[0];
+    var position = current ? all.indexOf(current) : -1;
+    var target = null;
+    if (direction > 0) {
+      target = matches.filter(function (m) { return all.indexOf(m) > position; })[0] || matches[0];
+    } else {
+      var before = matches.filter(function (m) { return all.indexOf(m) < position; });
+      target = before.length ? before[before.length - 1] : matches[matches.length - 1];
+    }
+    setFocus(target);
+    announceSearch('Result ' + (matches.indexOf(target) + 1) + ' of ' + matches.length + ': ' + labelOf(target));
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', function () {
+      if (searchTimer !== null) {
+        clearTimeout(searchTimer);
+      }
+      searchTimer = setTimeout(function () {
+        searchTimer = null;
+        runSearch();
+      }, SEARCH_DEBOUNCE_MS);
+    });
+    searchInput.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (searchTimer !== null) {
+          clearTimeout(searchTimer);
+          searchTimer = null;
+          runSearch();
+        }
+        stepResult(event.shiftKey ? -1 : 1);
+      }
+    });
+  }
+  if (prevBtn) {
+    prevBtn.addEventListener('click', function () { stepResult(-1); });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', function () { stepResult(1); });
+  }
 
   /* --------------------------------------------------------------- init --- */
 

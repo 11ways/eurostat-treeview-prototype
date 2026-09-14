@@ -30,11 +30,12 @@ server, so you can also e-mail the folder to someone and it will still work.
 | --- | --- |
 | `index.html` | The markup: the tree itself, all roles and ARIA states. |
 | `styles.css` | The styling. Every visual state is driven by the ARIA state, so the two cannot drift apart. |
-| `treeview.js` | The behaviour: keyboard, focus, the checkbox cascade and the "Selected: X of 20" counter. |
+| `treeview.js` | The behaviour: the select field, search, filters, keyboard, focus, the checkbox cascade and the "Selected: X of 20" counter. |
 
 ## Keyboard reference
 
-The whole tree is a **single tab stop**: <kbd>Tab</kbd> moves into the tree and
+The tree sits inside a **select field** (see the next section). Once the field
+is open, the tree is a **single tab stop**: <kbd>Tab</kbd> moves into the tree and
 <kbd>Tab</kbd> again moves out of it. You never tab from node to node - inside
 the tree you use the arrow keys. This is what the ARIA guidelines prescribe for
 a tree, and it is why keyboard users do not have to press Tab 27 times to get
@@ -75,6 +76,48 @@ triangle to open or close a branch.
 - That counter is a live region, so screen readers read the new number out loud
   shortly after you finish ticking, without you having to go and look for it.
 
+## The select field, search and filters
+
+Following Regine's feedback, the tree is no longer loose on the page. It sits
+inside a field that looks and behaves like a select:
+
+- **The field** is a button labelled "Geographic regions, 0 of 20 selected".
+  <kbd>Enter</kbd>, <kbd>Space</kbd> or a click opens the panel underneath and
+  puts focus in the search box. <kbd>Escape</kbd> anywhere in the panel closes
+  it and puts focus back on the button. Technically this is the
+  [disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)
+  (`aria-expanded` + `aria-controls`), **not** a combobox: a combobox whose
+  popup is a tree has patchy screen reader support, a disclosure works
+  everywhere and leaves the tree's own keyboard model untouched.
+- **Search box.** Type part of a name; matching is case- and accent-insensitive
+  ("wurtt" finds Baden-Württemberg, "land" finds eight nodes). Matches are
+  highlighted (yellow background plus underline, so not colour alone) and their
+  parents are opened, so every hit can be reached with the arrow keys. The
+  search **does not hide anything**: a hit keeps its country and region around
+  it. About 0.3 s after you stop typing, a polite live region next to the box
+  announces **"8 results for “land”"**, **"1 result for …"** or
+  **"No results for “zzz”"**.
+- **Previous result / Next result.** Move focus to the previous or next hit,
+  wrapping around at either end, and announce **"Result 2 of 8: West
+  Flanders"**. <kbd>Enter</kbd> in the search box does the same as Next result,
+  <kbd>Shift</kbd>+<kbd>Enter</kbd> as Previous result. Both buttons are
+  disabled while there are no hits.
+- **Filters** (radio buttons "Show"): *All regions*, *Selected only*, *Not
+  selected only*. A filtered-out node gets the `hidden` attribute, which
+  removes it from the accessibility tree as well; parents with nothing left
+  underneath disappear too, and `aria-posinset` / `aria-setsize` are recomputed
+  over the nodes that remain, so "1 of 1" is announced instead of a stale
+  "2 of 5". Changing the filter announces **"Showing 3 of 20 regions"** (or, if
+  a search is active, re-runs the search and announces its new count). The node
+  you are on is never hidden from under you: untick something under "Selected
+  only" and it stays until the filter is applied again.
+- **Select all / Clear all** act on the regions the filter currently shows, so
+  "Not selected only" followed by "Select all" ticks exactly what is on screen.
+
+The live counter "Selected: X of 20 regions" is now inside the panel, above the
+tree; the closed field repeats the number in its own name, without being a live
+region itself, so closing the field does not cause a second announcement.
+
 ## ARIA pattern used
 
 This follows the
@@ -106,9 +149,15 @@ model that the pattern depends on.
 Everything below was checked **automatically, in Chromium only**, using
 Playwright and axe-core:
 
-- 29 behavioural checks: opening and closing branches, every key in the table
-  above, the ticking cascade in both directions, the single tab stop, mouse
-  clicks, and the "Selected: X of 20" counter;
+- 29 behavioural checks on the tree itself: opening and closing branches,
+  every key in the table above, the ticking cascade in both directions, the
+  single tab stop, mouse clicks, and the "Selected: X of 20" counter;
+- 24 behavioural checks on the select field (14 September 2026): open and
+  close with the keyboard, focus going to the search box and back to the
+  button, the result count text, Enter / Next / Previous including wrap-around,
+  the "No results" text, accent-insensitive matching, the three filters, the
+  renumbering of `aria-posinset` / `aria-setsize`, the focused node surviving
+  an untick under "Selected only", and Select all / Clear all;
 - axe-core 4.13: **0 violations, 0 incomplete**;
 - the structural ARIA: the browser's own accessibility tree reports the right
   names, levels and checked values (`true` / `false` / `mixed`) for every node.
@@ -130,7 +179,7 @@ that work is:
 
 | Combination | Manually tested? | Result |
 | --- | --- | --- |
-| **VoiceOver + Safari** (macOS) | **Yes, 14 September 2026 (two sessions)** | Three real problems found, all now mitigated. Needs re-testing. |
+| **VoiceOver + Safari** (macOS) | **Yes, 14 September 2026 (two sessions)**, tree only | Three real problems found, all now mitigated. Needs re-testing. The select field, search and filters (section D) have **never been heard** by anyone. |
 | **NVDA + Chrome** (Windows) | **Not yet** | Expected to work, unverified. |
 | **JAWS + Chrome** (Windows) | **Not yet** | Expected to work, unverified. |
 
@@ -270,7 +319,11 @@ General tips before you start:
 2. Start NVDA: <kbd>Control</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>. (To stop it
    later: <kbd>Insert</kbd>+<kbd>Q</kbd>, then Enter.)
 3. Press <kbd>Control</kbd>+<kbd>Home</kbd> to go to the top of the page, then
-   press <kbd>Tab</kbd> until you hear something like **"Geographic regions,
+   press <kbd>Tab</kbd> until you hear **"Geographic regions, 0 of 20
+   selected"**, "button, collapsed". Press <kbd>Enter</kbd> to open the field
+   (focus goes to the search box), then keep pressing <kbd>Tab</kbd> past the
+   search box, the two result buttons, the three radio buttons and the two
+   Select / Clear buttons until you hear something like **"Geographic regions,
    tree, Belgium, level 1, not checked, tree item, not checked, level 1, 1 of 3,
    expanded"**.
    - The part that must be there word for word is the name:
@@ -408,7 +461,11 @@ before you start.
 
 6. Press <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>A</kbd> to read the page from
    the top, then <kbd>Control</kbd> to stop the reading.
-7. Press <kbd>Tab</kbd> until focus lands in the tree, on Belgium.
+7. Press <kbd>Tab</kbd> until you hear **"Geographic regions, 0 of 20
+   selected"**, "button, collapsed". Press <kbd>Enter</kbd> to open the field
+   (focus goes to the search box), then keep pressing <kbd>Tab</kbd> past the
+   search box, the two result buttons, the three radio buttons and the two
+   Select / Clear buttons until focus lands in the tree, on Belgium.
    - **Expect to hear:** **"Belgium, level 1, not checked"**, followed by
      VoiceOver's own "tree item", "1 of 3" and "expanded" in some order.
    - **Pass** if the words "level 1" and "not checked" are in there.
@@ -535,6 +592,61 @@ before you start.
     (for example drop "level" and say only the number), but only if you tell us
     it is a problem.
 
+### D. The select field, search and filters (all three screen readers)
+
+> **Status: not yet tested with any screen reader.** Added on 14 September 2026
+> after Regine's feedback; checked in Chromium only. Run this with the same
+> screen reader you used for A, B or C. Reload the page first.
+
+Phrases in `**bold quotes**` come from the page and must match word for word.
+
+1. <kbd>Tab</kbd> to the field.
+   - **Expect:** **"Geographic regions, 0 of 20 selected"** plus the screen
+     reader's own "button" and "collapsed".
+2. Press <kbd>Enter</kbd>.
+   - **Expect:** "expanded" (or similar), then focus in a text box named
+     **"Search regions"**. NVDA and JAWS may also read the hint: **"The number
+     of results is announced as you type..."**.
+3. Type `land` and wait a second, without pressing anything else.
+   - **Expect to hear, without moving:** **"8 results for “land”"**.
+   - **Fail** if nothing is said, or if it is said once per letter.
+4. Press <kbd>Enter</kbd>.
+   - **Expect:** focus moves into the tree, **"East Flanders, level 3, not
+     checked"**, and shortly after **"Result 1 of 8: East Flanders"**.
+   - Note whether the second phrase interrupts or is swallowed by the first.
+5. Press <kbd>Shift</kbd>+<kbd>Tab</kbd> until you reach **"Next result"**,
+   "button", and press <kbd>Enter</kbd>.
+   - **Expect:** **"West Flanders, level 3, not checked"** and
+     **"Result 2 of 8: West Flanders"**.
+6. Press <kbd>Down Arrow</kbd> a few times from there.
+   - **Expect:** the arrow keys still walk the tree normally, one node per
+     press. The tree has not been filtered by the search.
+7. <kbd>Shift</kbd>+<kbd>Tab</kbd> back to the search box, press
+   <kbd>Escape</kbd> once.
+   - **Expect:** the box is empty, focus stays in it, the result buttons are
+     announced as "dimmed" / "unavailable" if you Tab to them.
+8. Type `zzz` and wait.
+   - **Expect:** **"No results for “zzz”"**.
+9. Clear the box (<kbd>Escape</kbd>), <kbd>Tab</kbd> to the radio buttons,
+   press <kbd>Down Arrow</kbd> to reach **"Selected only"**.
+   - **Expect:** the radio group is announced as **"Show"**, and after the
+     change: **"Showing 0 of 20 regions"**.
+   - <kbd>Tab</kbd> onwards: after Select all / Clear all there must be **no
+     tree at all** to land on (nothing is selected, so nothing is shown).
+     Focus should go to the next thing on the page, the "Keyboard" heading.
+10. Go back to the radio buttons, choose **"All regions"**, <kbd>Tab</kbd> to
+    the tree, tick **Antwerp** with <kbd>Space</kbd>, then go back and choose
+    **"Selected only"** again.
+    - **Expect:** **"Showing 1 of 20 regions"**. <kbd>Tab</kbd> into the tree:
+      **"Belgium, level 1, partially selected"** with **"1 of 1"** as position,
+      not "1 of 3". Arrow down: Flemish Region, then Antwerp, and nothing else.
+11. On Antwerp press <kbd>Space</kbd> to untick it.
+    - **Expect:** Antwerp is announced as not checked and **focus stays on
+      it**; it does not vanish. **"Selected: 0 of 20 regions"** follows.
+12. Press <kbd>Escape</kbd>.
+    - **Expect:** focus is back on the field button: **"Geographic regions, 0
+      of 20 selected"**, "collapsed". Nothing else is announced.
+
 ### What to send back
 
 For each of the three combinations, please note:
@@ -549,6 +661,8 @@ For each of the three combinations, please note:
 5. Whether the "X of Y" position ("1 of 5") is still announced.
 6. Anything that was silent, confusing, or read twice in an annoying way, and
    your answer to step 26 about the overall length.
-7. For VoiceOver only: what step 8a gave, stop by stop. Did
+7. For section D: the exact wording heard at steps 3, 4 and 9, and whether the
+   "Result X of Y" phrase at step 4 was audible after the node name or lost.
+8. For VoiceOver only: what step 8a gave, stop by stop. Did
    <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Right Arrow</kbd> visit one node
    per press, in order, with nothing skipped and no extra stops?

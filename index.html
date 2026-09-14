@@ -25,9 +25,64 @@
 
   <h2 id="tree-label">Geographic regions</h2>
 
-  <p id="tree-status" class="tree-status" role="status" aria-live="polite" aria-atomic="true">
-    Selected: 0 of 20 regions
-  </p>
+  <!--
+    The tree lives inside a "select field": a disclosure button that looks like
+    a select and opens a panel with a search box, filters and the tree itself.
+    It is deliberately a disclosure (button + aria-expanded + aria-controls), not
+    a combobox: a combobox whose popup is a tree has very uneven screen reader
+    support, while a plain disclosure works everywhere and keeps the tree's own
+    keyboard model intact. The button's name is "Geographic regions, 0 of 20
+    selected"; the count is not a live region here (the one inside the panel
+    is), so closing the panel does not trigger a second announcement.
+  -->
+  <div class="field">
+    <button type="button" id="region-toggle" class="field__toggle"
+            aria-expanded="false" aria-controls="region-panel"
+            aria-labelledby="tree-label region-summary">
+      <span id="region-summary" class="field__summary">0 of 20 selected</span>
+      <span class="field__chevron" aria-hidden="true"></span>
+    </button>
+
+    <div id="region-panel" class="field__panel" hidden>
+
+      <!-- Search: matches are highlighted in the tree and their ancestors are
+           expanded. The tree is never filtered by the search - a hit keeps its
+           context - and the result count goes to a polite live region. -->
+      <div class="toolbar">
+        <div class="toolbar__search">
+          <label for="region-search">Search regions</label>
+          <input type="search" id="region-search" autocomplete="off" spellcheck="false"
+                 aria-describedby="search-hint">
+          <span id="search-hint" class="visually-hidden">
+            The number of results is announced as you type. Use the Previous result and Next result buttons to move through them.
+          </span>
+        </div>
+        <div class="toolbar__nav">
+          <button type="button" id="result-prev" class="btn" disabled>Previous result</button>
+          <button type="button" id="result-next" class="btn" disabled>Next result</button>
+        </div>
+        <p id="search-status" class="search-status" role="status" aria-live="polite" aria-atomic="true"></p>
+      </div>
+
+      <!-- Filters: hide nodes with the hidden attribute, which also removes
+           them from the accessibility tree; aria-posinset / aria-setsize are
+           recomputed over the nodes that remain. -->
+      <div class="toolbar toolbar--filters">
+        <fieldset class="filters">
+          <legend>Show</legend>
+          <label><input type="radio" name="region-filter" value="all" checked> All regions</label>
+          <label><input type="radio" name="region-filter" value="selected"> Selected only</label>
+          <label><input type="radio" name="region-filter" value="unselected"> Not selected only</label>
+        </fieldset>
+        <div class="toolbar__bulk">
+          <button type="button" id="select-all" class="btn">Select all</button>
+          <button type="button" id="clear-all" class="btn">Clear all</button>
+        </div>
+      </div>
+
+      <p id="tree-status" class="tree-status" role="status" aria-live="polite" aria-atomic="true">
+        Selected: 0 of 20 regions
+      </p>
 
   <!--
     Every treeitem carries explicit aria-level / aria-posinset / aria-setsize.
@@ -300,9 +355,17 @@
 
   </ul>
 
+    </div><!-- /region-panel -->
+  </div><!-- /field -->
+
   <h2>Keyboard</h2>
   <p class="note">
-    The tree is a single tab stop. Use <kbd>Tab</kbd> to reach it, then the keys below.
+    Open the field with <kbd>Enter</kbd> or <kbd>Space</kbd> on the &ldquo;Geographic regions&rdquo; button,
+    <kbd>Tab</kbd> through the search box, the result buttons and the filters to reach the tree.
+    <kbd>Escape</kbd> anywhere in the panel closes it and returns focus to the button
+    (in a non-empty search box it first clears the box). In the search box, <kbd>Enter</kbd> jumps
+    to the next result and <kbd>Shift</kbd>+<kbd>Enter</kbd> to the previous one.
+    The tree itself is a single tab stop and uses the keys below.
   </p>
   <table class="keys">
     <caption class="visually-hidden">Keyboard support for the treeview</caption>

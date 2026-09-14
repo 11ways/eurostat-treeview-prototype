@@ -94,7 +94,8 @@ specifically the **checkbox / multi-select variant** of it:
   node's accessible name with `aria-labelledby`, that repeats the level and the
   tick state in plain words (", level 3, not checked"). This is a deliberate
   redundancy, added because VoiceOver announces neither of those two things by
-  itself. It is described in full below.
+  itself. The span is `aria-hidden="true"`, so it feeds the name but is not an
+  object of its own in the reading order. It is described in full below.
 
 Deliberately **not** used: real `<input type="checkbox">` elements inside the
 nodes. They would each become their own tab stop and break the single-tab-stop
@@ -111,9 +112,12 @@ Playwright and axe-core:
 - axe-core 4.13: **0 violations, 0 incomplete**;
 - the structural ARIA: the browser's own accessibility tree reports the right
   names, levels and checked values (`true` / `false` / `mixed`) for every node.
-  Re-checked on 14 September 2026 after the VoiceOver fix below: all 27 nodes
-  expose a name of the form "Antwerp, level 3, not checked", and it follows the
-  ticking cascade for leaves, fully ticked parents and partly ticked parents;
+  Re-checked on 14 September 2026 after the VoiceOver fixes below: all 27 nodes
+  expose a name of the form "Antwerp, level 3, not checked", it follows the
+  ticking cascade for leaves, fully ticked parents and partly ticked parents,
+  and the hidden helper spans no longer show up as separate objects in the
+  browser's accessibility tree (before the second fix, every visible node had
+  one such stray text object next to it);
 - colour contrast, measured from the rendered page: text 15:1 or better (the AA
   threshold is 4.5:1), checkbox and triangle graphics 8:1 or better, focus ring
   7.2:1 (threshold 3:1);
@@ -126,7 +130,7 @@ that work is:
 
 | Combination | Manually tested? | Result |
 | --- | --- | --- |
-| **VoiceOver + Safari** (macOS) | **Yes, 14 September 2026** | Two real gaps found, both now mitigated. Needs re-testing. |
+| **VoiceOver + Safari** (macOS) | **Yes, 14 September 2026 (two sessions)** | Three real problems found, all now mitigated. Needs re-testing. |
 | **NVDA + Chrome** (Windows) | **Not yet** | Expected to work, unverified. |
 | **JAWS + Chrome** (Windows) | **Not yet** | Expected to work, unverified. |
 
@@ -179,6 +183,43 @@ VoiceOver session and verified only in Chromium (accessibility tree inspection
 plus axe-core, 0 violations). **It must be re-verified by running the updated
 VoiceOver script in section C below**, and the NVDA and JAWS scripts still need
 a first run.
+
+### VoiceOver's reading cursor skipped nodes (found 14 September 2026, second session)
+
+A second VoiceOver + Safari session, run against the mitigation above, found a
+new problem:
+
+4. **One press of <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Right Arrow</kbd>
+   from "Belgium" landed straight on "Flemish Brabant"**, three nodes further
+   down, without announcing "Flemish Region", "Antwerp" or "East Flanders" on
+   the way. That is VoiceOver's own reading cursor, the normal way a VoiceOver
+   user reads any page, and reading through a tree should visit one node per
+   press, in the order they appear. Skipping three of them silently is wrong.
+
+**Likely cause, in plain terms.** The hidden helper text that we added for
+finding 1 and 2 (the ", level 3, not checked" part of every name) lived in a
+small hidden element next to each node. That element was only hidden from
+*sight*. To the screen reader it was still a thing of its own, sitting in the
+reading order right after every node, in addition to lending its words to the
+node's name. Twenty-seven of those stray, wordless-looking objects in the
+reading order is exactly the kind of thing that throws a screen reader's own
+cursor off. Chromium confirmed the stray objects: before the fix, every visible
+node had a separate text object ", level N, not checked" next to it in the
+browser's accessibility tree.
+
+**Fix (now in the code).** Each helper element is now also marked
+`aria-hidden="true"`. That takes it out of the reading order as an object,
+while its text is still merged into the node's name through `aria-labelledby`,
+which is what the accessible name rules prescribe for exactly this situation.
+After the change, Chromium's accessibility tree shows no separate helper
+objects at all, and every node still has its full name ("Antwerp, level 3, not
+checked", "Belgium, level 1, partially selected", and so on). All behavioural
+checks and axe-core (0 violations) still pass.
+
+**Not yet confirmed live.** Chromium's accessibility tree is not Safari's, so
+this is good evidence, not proof, that the skip is gone. It is the standard,
+low-risk technique for this case, so it was applied with reasonable confidence,
+but **it needs a real VoiceOver retest**: see step 8a in section C2 below.
 
 ## Manual test checklist
 
@@ -338,11 +379,10 @@ before you start.
 > - <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Arrow</kbd> moves VoiceOver's own
 >   reading cursor through the page in document order, regardless of real
 >   keyboard focus. It is meant for *reading* a page, not for operating a
->   custom widget - it will walk straight through Belgium's already-open
->   branches and land deep inside, e.g. on "Flemish Brabant", several nodes
->   past Belgium, and pressing <kbd>Space</kbd> there will tick Flemish
->   Brabant, not Belgium. That is VoiceOver's normal behaviour for nested
->   lists, not a bug in the tree - it is simply the wrong tool for this job.
+>   custom widget: it walks *into* Belgium's already-open branches one node at
+>   a time, and pressing <kbd>Space</kbd> wherever it stops ticks *that* node,
+>   not Belgium. It does not move the tree's real focus, so it is the wrong
+>   tool for the steps below.
 > - Plain <kbd>Arrow</kbd> keys (no <kbd>Control</kbd>+<kbd>Option</kbd>) are
 >   what the tree actually listens to, and they only work once real keyboard
 >   focus is on a node inside it.
@@ -350,10 +390,19 @@ before you start.
 > So: use <kbd>Tab</kbd> (step 7 below) to place real focus on Belgium, then
 > stay on plain arrow keys for every step in C1-C7. Only reach for
 > <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Arrow</kbd> for step 6, to read the
-> page before you start - not once you are inside the tree. If you catch
-> yourself using it again mid-test and land somewhere unexpected, that is this
-> mix-up, not a new finding: press <kbd>Tab</kbd> back out and back in, or
-> reload with <kbd>Command</kbd>+<kbd>R</kbd>, and continue with plain arrows.
+> page before you start, and for the one deliberate check in step 8a - not
+> otherwise once you are inside the tree. If you catch yourself using it
+> mid-test and land somewhere unexpected, that is this mix-up, not a new
+> finding: press <kbd>Tab</kbd> back out and back in, or reload with
+> <kbd>Command</kbd>+<kbd>R</kbd>, and continue with plain arrows.
+>
+> One clarification since the last round: in the previous session a single
+> <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Right Arrow</kbd> from Belgium jumped
+> straight to "Flemish Brabant". We first put that down to the reading cursor
+> being the wrong tool; it was not, it was finding 4 above (a hidden helper
+> element getting in the reading cursor's way), and it has been fixed. The
+> reading cursor should now step through the tree **one node per press**, in
+> order. Step 8a checks exactly that.
 
 #### C1. Entering the tree: is the level there?
 
@@ -384,6 +433,21 @@ before you start.
      there. If it has disappeared, that is a regression: report it.
    - Each node must be announced with **its own name only**, never with the
      names of everything underneath it glued on.
+
+8a. **Reading-cursor check (retest of finding 4).** Press <kbd>Home</kbd> to
+    get back to Belgium, then press
+    <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Right Arrow</kbd> four times,
+    one press at a time. This is VoiceOver's own reading cursor, not the tree's
+    focus, so it is expected that VoiceOver adds different wrapping words here.
+    - **Expect:** the same four names as in the table above, in the same order,
+      **one per press**: Flemish Region, Antwerp, East Flanders, Flemish
+      Brabant. Nothing skipped, and no extra stop that says only
+      "level 2, not checked" without a place name in front of it.
+    - **Fail** if a single press jumps past a node (as happened last time,
+      Belgium straight to Flemish Brabant) or if there is an extra stop between
+      two nodes. Write down every stop you heard.
+    - When done, press <kbd>Tab</kbd> out of the tree and back in, so real focus
+      is on Belgium again before you continue with step 9.
 
 #### C3. Ticking a single province: is the change audible at all?
 
@@ -485,3 +549,6 @@ For each of the three combinations, please note:
 5. Whether the "X of Y" position ("1 of 5") is still announced.
 6. Anything that was silent, confusing, or read twice in an annoying way, and
    your answer to step 26 about the overall length.
+7. For VoiceOver only: what step 8a gave, stop by stop. Did
+   <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Right Arrow</kbd> visit one node
+   per press, in order, with nothing skipped and no extra stops?

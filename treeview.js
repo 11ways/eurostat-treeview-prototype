@@ -217,6 +217,12 @@
    * accepted on purpose: the project's rule, already applied to the mixed state
    * before, is that a state going completely unannounced is far worse than one
    * announced twice.
+   *
+   * The span is aria-hidden="true" in the markup (see the comment in
+   * index.html): it must contribute text to the name, but never be an
+   * accessible object of its own that a screen reader's reading cursor can
+   * land on. This function only ever writes its textContent and must not
+   * touch that attribute.
    */
   function setCheckedState(item, state) {
     item.setAttribute('aria-checked', state);

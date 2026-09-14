@@ -42,6 +42,16 @@
     name as well. aria-posinset / aria-setsize are announced correctly and are
     deliberately not duplicated. The spans start out empty; treeview.js fills all
     27 of them on load, so the markup can never disagree with the script.
+
+    The state spans also carry aria-hidden="true". Without it, each span was an
+    accessible object of its own (a text node ", level 3, not checked" sitting
+    next to the treeitem), on top of feeding the treeitem's name. A second
+    VoiceOver + Safari session on 14 September 2026 found that Control+Option+
+    Right Arrow from Belgium jumped straight to Flemish Brabant, skipping three
+    nodes silently; these stray objects in the reading order are the most likely
+    cause. aria-hidden removes the span as an object but, per the accessible
+    name computation, its text is still pulled into the name via
+    aria-labelledby. Verified in Chromium; needs a live VoiceOver retest.
   -->
   <ul id="region-tree" class="tree" role="tree" aria-multiselectable="true" aria-labelledby="tree-label">
 
@@ -51,7 +61,7 @@
         <span class="tree__twisty" aria-hidden="true"></span>
         <span class="tree__check" aria-hidden="true"></span>
         <span class="tree__label" id="lbl-be">Belgium</span>
-        <span class="visually-hidden" id="st-be"></span>
+        <span class="visually-hidden" id="st-be" aria-hidden="true"></span>
       </span>
       <ul role="group">
 
@@ -60,7 +70,7 @@
             <span class="tree__twisty" aria-hidden="true"></span>
             <span class="tree__check" aria-hidden="true"></span>
             <span class="tree__label" id="lbl-be-vl">Flemish Region</span>
-            <span class="visually-hidden" id="st-be-vl"></span>
+            <span class="visually-hidden" id="st-be-vl" aria-hidden="true"></span>
           </span>
           <ul role="group">
             <li role="treeitem" aria-labelledby="lbl-be-vl-ant st-be-vl-ant" aria-checked="false" aria-level="3" aria-posinset="1" aria-setsize="5" tabindex="-1">
@@ -68,7 +78,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-be-vl-ant">Antwerp</span>
-                <span class="visually-hidden" id="st-be-vl-ant"></span>
+                <span class="visually-hidden" id="st-be-vl-ant" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-be-vl-ovl st-be-vl-ovl" aria-checked="false" aria-level="3" aria-posinset="2" aria-setsize="5" tabindex="-1">
@@ -76,7 +86,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-be-vl-ovl">East Flanders</span>
-                <span class="visually-hidden" id="st-be-vl-ovl"></span>
+                <span class="visually-hidden" id="st-be-vl-ovl" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-be-vl-vbr st-be-vl-vbr" aria-checked="false" aria-level="3" aria-posinset="3" aria-setsize="5" tabindex="-1">
@@ -84,7 +94,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-be-vl-vbr">Flemish Brabant</span>
-                <span class="visually-hidden" id="st-be-vl-vbr"></span>
+                <span class="visually-hidden" id="st-be-vl-vbr" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-be-vl-lim st-be-vl-lim" aria-checked="false" aria-level="3" aria-posinset="4" aria-setsize="5" tabindex="-1">
@@ -92,7 +102,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-be-vl-lim">Limburg</span>
-                <span class="visually-hidden" id="st-be-vl-lim"></span>
+                <span class="visually-hidden" id="st-be-vl-lim" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-be-vl-wvl st-be-vl-wvl" aria-checked="false" aria-level="3" aria-posinset="5" aria-setsize="5" tabindex="-1">
@@ -100,7 +110,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-be-vl-wvl">West Flanders</span>
-                <span class="visually-hidden" id="st-be-vl-wvl"></span>
+                <span class="visually-hidden" id="st-be-vl-wvl" aria-hidden="true"></span>
               </span>
             </li>
           </ul>
@@ -111,7 +121,7 @@
             <span class="tree__twisty" aria-hidden="true"></span>
             <span class="tree__check" aria-hidden="true"></span>
             <span class="tree__label" id="lbl-be-wa">Walloon Region</span>
-            <span class="visually-hidden" id="st-be-wa"></span>
+            <span class="visually-hidden" id="st-be-wa" aria-hidden="true"></span>
           </span>
           <ul role="group">
             <li role="treeitem" aria-labelledby="lbl-be-wa-hai st-be-wa-hai" aria-checked="false" aria-level="3" aria-posinset="1" aria-setsize="5" tabindex="-1">
@@ -119,7 +129,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-be-wa-hai">Hainaut</span>
-                <span class="visually-hidden" id="st-be-wa-hai"></span>
+                <span class="visually-hidden" id="st-be-wa-hai" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-be-wa-lie st-be-wa-lie" aria-checked="false" aria-level="3" aria-posinset="2" aria-setsize="5" tabindex="-1">
@@ -127,7 +137,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-be-wa-lie">Li&egrave;ge</span>
-                <span class="visually-hidden" id="st-be-wa-lie"></span>
+                <span class="visually-hidden" id="st-be-wa-lie" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-be-wa-lux st-be-wa-lux" aria-checked="false" aria-level="3" aria-posinset="3" aria-setsize="5" tabindex="-1">
@@ -135,7 +145,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-be-wa-lux">Luxembourg</span>
-                <span class="visually-hidden" id="st-be-wa-lux"></span>
+                <span class="visually-hidden" id="st-be-wa-lux" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-be-wa-nam st-be-wa-nam" aria-checked="false" aria-level="3" aria-posinset="4" aria-setsize="5" tabindex="-1">
@@ -143,7 +153,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-be-wa-nam">Namur</span>
-                <span class="visually-hidden" id="st-be-wa-nam"></span>
+                <span class="visually-hidden" id="st-be-wa-nam" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-be-wa-bwa st-be-wa-bwa" aria-checked="false" aria-level="3" aria-posinset="5" aria-setsize="5" tabindex="-1">
@@ -151,7 +161,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-be-wa-bwa">Walloon Brabant</span>
-                <span class="visually-hidden" id="st-be-wa-bwa"></span>
+                <span class="visually-hidden" id="st-be-wa-bwa" aria-hidden="true"></span>
               </span>
             </li>
           </ul>
@@ -162,7 +172,7 @@
             <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
             <span class="tree__check" aria-hidden="true"></span>
             <span class="tree__label" id="lbl-be-bru">Brussels-Capital Region</span>
-            <span class="visually-hidden" id="st-be-bru"></span>
+            <span class="visually-hidden" id="st-be-bru" aria-hidden="true"></span>
           </span>
         </li>
 
@@ -175,7 +185,7 @@
         <span class="tree__twisty" aria-hidden="true"></span>
         <span class="tree__check" aria-hidden="true"></span>
         <span class="tree__label" id="lbl-nl">Netherlands</span>
-        <span class="visually-hidden" id="st-nl"></span>
+        <span class="visually-hidden" id="st-nl" aria-hidden="true"></span>
       </span>
       <ul role="group">
 
@@ -184,7 +194,7 @@
             <span class="tree__twisty" aria-hidden="true"></span>
             <span class="tree__check" aria-hidden="true"></span>
             <span class="tree__label" id="lbl-nl-n">North Netherlands</span>
-            <span class="visually-hidden" id="st-nl-n"></span>
+            <span class="visually-hidden" id="st-nl-n" aria-hidden="true"></span>
           </span>
           <ul role="group">
             <li role="treeitem" aria-labelledby="lbl-nl-n-gr st-nl-n-gr" aria-checked="false" aria-level="3" aria-posinset="1" aria-setsize="3" tabindex="-1">
@@ -192,7 +202,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-nl-n-gr">Groningen</span>
-                <span class="visually-hidden" id="st-nl-n-gr"></span>
+                <span class="visually-hidden" id="st-nl-n-gr" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-nl-n-fr st-nl-n-fr" aria-checked="false" aria-level="3" aria-posinset="2" aria-setsize="3" tabindex="-1">
@@ -200,7 +210,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-nl-n-fr">Friesland</span>
-                <span class="visually-hidden" id="st-nl-n-fr"></span>
+                <span class="visually-hidden" id="st-nl-n-fr" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-nl-n-dr st-nl-n-dr" aria-checked="false" aria-level="3" aria-posinset="3" aria-setsize="3" tabindex="-1">
@@ -208,7 +218,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-nl-n-dr">Drenthe</span>
-                <span class="visually-hidden" id="st-nl-n-dr"></span>
+                <span class="visually-hidden" id="st-nl-n-dr" aria-hidden="true"></span>
               </span>
             </li>
           </ul>
@@ -219,7 +229,7 @@
             <span class="tree__twisty" aria-hidden="true"></span>
             <span class="tree__check" aria-hidden="true"></span>
             <span class="tree__label" id="lbl-nl-e">East Netherlands</span>
-            <span class="visually-hidden" id="st-nl-e"></span>
+            <span class="visually-hidden" id="st-nl-e" aria-hidden="true"></span>
           </span>
           <ul role="group">
             <li role="treeitem" aria-labelledby="lbl-nl-e-ov st-nl-e-ov" aria-checked="false" aria-level="3" aria-posinset="1" aria-setsize="3" tabindex="-1">
@@ -227,7 +237,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-nl-e-ov">Overijssel</span>
-                <span class="visually-hidden" id="st-nl-e-ov"></span>
+                <span class="visually-hidden" id="st-nl-e-ov" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-nl-e-ge st-nl-e-ge" aria-checked="false" aria-level="3" aria-posinset="2" aria-setsize="3" tabindex="-1">
@@ -235,7 +245,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-nl-e-ge">Gelderland</span>
-                <span class="visually-hidden" id="st-nl-e-ge"></span>
+                <span class="visually-hidden" id="st-nl-e-ge" aria-hidden="true"></span>
               </span>
             </li>
             <li role="treeitem" aria-labelledby="lbl-nl-e-fl st-nl-e-fl" aria-checked="false" aria-level="3" aria-posinset="3" aria-setsize="3" tabindex="-1">
@@ -243,7 +253,7 @@
                 <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
                 <span class="tree__check" aria-hidden="true"></span>
                 <span class="tree__label" id="lbl-nl-e-fl">Flevoland</span>
-                <span class="visually-hidden" id="st-nl-e-fl"></span>
+                <span class="visually-hidden" id="st-nl-e-fl" aria-hidden="true"></span>
               </span>
             </li>
           </ul>
@@ -258,7 +268,7 @@
         <span class="tree__twisty" aria-hidden="true"></span>
         <span class="tree__check" aria-hidden="true"></span>
         <span class="tree__label" id="lbl-de">Germany</span>
-        <span class="visually-hidden" id="st-de"></span>
+        <span class="visually-hidden" id="st-de" aria-hidden="true"></span>
       </span>
       <ul role="group">
         <li role="treeitem" aria-labelledby="lbl-de-bw st-de-bw" aria-checked="false" aria-level="2" aria-posinset="1" aria-setsize="3" tabindex="-1">
@@ -266,7 +276,7 @@
             <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
             <span class="tree__check" aria-hidden="true"></span>
             <span class="tree__label" id="lbl-de-bw">Baden-W&uuml;rttemberg</span>
-            <span class="visually-hidden" id="st-de-bw"></span>
+            <span class="visually-hidden" id="st-de-bw" aria-hidden="true"></span>
           </span>
         </li>
         <li role="treeitem" aria-labelledby="lbl-de-by st-de-by" aria-checked="false" aria-level="2" aria-posinset="2" aria-setsize="3" tabindex="-1">
@@ -274,7 +284,7 @@
             <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
             <span class="tree__check" aria-hidden="true"></span>
             <span class="tree__label" id="lbl-de-by">Bavaria</span>
-            <span class="visually-hidden" id="st-de-by"></span>
+            <span class="visually-hidden" id="st-de-by" aria-hidden="true"></span>
           </span>
         </li>
         <li role="treeitem" aria-labelledby="lbl-de-be st-de-be" aria-checked="false" aria-level="2" aria-posinset="3" aria-setsize="3" tabindex="-1">
@@ -282,7 +292,7 @@
             <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
             <span class="tree__check" aria-hidden="true"></span>
             <span class="tree__label" id="lbl-de-be">Berlin</span>
-            <span class="visually-hidden" id="st-de-be"></span>
+            <span class="visually-hidden" id="st-de-be" aria-hidden="true"></span>
           </span>
         </li>
       </ul>

@@ -1,0 +1,325 @@
+/* ==========================================================================
+   Accessible multi-select treeview - prototype styles
+
+   Colour choices (all checked against the WCAG 2.2 AA thresholds):
+     text  #1b1b1b on #ffffff ............ 16.1:1  (needs 4.5:1)
+     muted #4a4a4a on #ffffff ............  8.9:1  (needs 4.5:1)
+     checkbox border #4a4a4a on #ffffff ..  8.9:1  (needs 3:1, non-text)
+     checkbox fill   #17508f on #ffffff ..  8.0:1  (needs 3:1, non-text)
+     check glyph     #ffffff on #17508f ..  8.0:1  (needs 3:1, non-text)
+     twisty          #3d3d3d on #ffffff .. 11.0:1  (needs 3:1, non-text)
+     focus ring      #17508f on #ffffff ..  8.0:1  (needs 3:1)
+     focus ring      #17508f on #eaf1fa ..  6.9:1  (needs 3:1)
+
+   State is never signalled by colour alone: unchecked = empty box,
+   checked = check glyph, partially checked = dash glyph; expanded state is
+   carried by the rotation (direction) of the disclosure triangle.
+   ========================================================================== */
+
+:root {
+  --c-text: #1b1b1b;
+  --c-muted: #4a4a4a;
+  --c-bg: #ffffff;
+  --c-accent: #17508f;
+  --c-hover: #eaf1fa;
+  --c-rule: #c9c9c9;
+  --c-twisty: #3d3d3d;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 100%;
+  line-height: 1.5;
+}
+
+.page {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+h1 {
+  font-size: 1.75rem;
+  line-height: 1.25;
+  margin: 0 0 0.75rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  line-height: 1.3;
+  margin: 2rem 0 0.5rem;
+}
+
+.intro,
+.note {
+  max-width: 42rem;
+}
+
+.note {
+  color: var(--c-muted);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9375em;
+  background: #f2f2f2;
+  padding: 0.05em 0.3em;
+  border-radius: 3px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------- status -- */
+
+/* Visible live region. It sits above the tree so that it is also visible to
+   sighted keyboard users while they are moving through the tree. */
+.tree-status {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 4px solid var(--c-accent);
+  background: var(--c-hover);
+  font-weight: 600;
+}
+
+/* ----------------------------------------------------------------- tree -- */
+
+.tree,
+.tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tree {
+  border: 1px solid var(--c-rule);
+  border-radius: 6px;
+  padding: 0.5rem 0;
+  max-width: 32rem;
+}
+
+/* Nested groups are indented and get a vertical guide line. */
+.tree ul[role="group"] {
+  margin-inline-start: 1.4rem;
+  padding-inline-start: 0.45rem;
+  border-inline-start: 1px solid var(--c-rule);
+}
+
+/* A collapsed node hides its group. display:none also removes the subtree from
+   the accessibility tree, so aria-expanded="false" and what a screen reader can
+   reach stay in agreement. This single rule is what makes expanding and
+   collapsing work - the script only ever writes aria-expanded. */
+.tree [aria-expanded="false"] > ul[role="group"] {
+  display: none;
+}
+
+/* The focusable element is the <li role="treeitem">, but it wraps its whole
+   subtree, so the focus indicator is drawn on the row instead. The outline is
+   never removed - it is moved. */
+.tree [role="treeitem"] {
+  outline: none;
+}
+
+.tree__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tree__row:hover {
+  background: var(--c-hover);
+}
+
+.tree [role="treeitem"]:focus > .tree__row {
+  outline: 3px solid var(--c-accent);
+  outline-offset: -1px;
+  background: var(--c-hover);
+}
+
+.tree__label {
+  /* Accessible name comes from this element via aria-labelledby, so it must
+     contain the label text and nothing else. */
+  flex: 1 1 auto;
+}
+
+/* ------------------------------------------------ disclosure triangle ---- */
+
+/* The twisty is two things at once:
+
+   - the box itself is the clickable target and is 1.5rem x 1.5rem = 24 x 24 px,
+     the minimum WCAG 2.2 AA success criterion 2.5.8 (Target Size (Minimum))
+     asks for;
+   - the triangle drawn in its ::after is only 0.75rem, so the visual weight of
+     the glyph did not change when the target grew.
+
+   The glyph has to live in the pseudo-element: clip-path clips the whole
+   element, so padding on .tree__twisty itself would scale the triangle with the
+   target instead of leaving it alone. The 0.5rem flex gap keeps a clear,
+   unclickable strip between this target and the checkbox next to it, so the two
+   stay easy to hit separately. Hit-testing a pseudo-element reports the
+   originating element as the event target, so the click handler still sees
+   .tree__twisty. */
+.tree__twisty {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.tree__twisty::after {
+  content: "";
+  width: 0.75rem;
+  height: 0.75rem;
+  background-color: var(--c-twisty);
+  /* right-pointing triangle */
+  clip-path: polygon(20% 0%, 20% 100%, 90% 50%);
+  transform: rotate(0deg);
+  transform-origin: 55% 50%;
+  transition: transform 120ms ease-out;
+}
+
+/* Expanded parents point the triangle downwards. */
+.tree [aria-expanded="true"] > .tree__row > .tree__twisty::after {
+  transform: rotate(90deg);
+}
+
+/* Leaves keep the same spacing but draw nothing. */
+.tree__twisty--leaf::after {
+  background-color: transparent;
+  clip-path: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tree__twisty::after {
+    transition: none;
+  }
+}
+
+/* -------------------------------------------------------- checkbox box -- */
+
+.tree__check {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid var(--c-muted);
+  border-radius: 3px;
+  background: var(--c-bg);
+}
+
+/* Both selected states get the same fill, but a different glyph shape, so the
+   three states are distinguishable without relying on colour. */
+.tree [aria-checked="true"] > .tree__row > .tree__check,
+.tree [aria-checked="mixed"] > .tree__row > .tree__check {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+}
+
+/* checked: check mark */
+.tree [aria-checked="true"] > .tree__row > .tree__check::after {
+  content: "";
+  width: 0.3rem;
+  height: 0.6rem;
+  margin-top: -0.15rem;
+  border: solid #ffffff;
+  border-width: 0 0.16rem 0.16rem 0;
+  transform: rotate(45deg);
+}
+
+/* partially checked: horizontal dash */
+.tree [aria-checked="mixed"] > .tree__row > .tree__check::after {
+  content: "";
+  width: 0.6rem;
+  height: 0;
+  border-top: 0.16rem solid #ffffff;
+}
+
+/* ------------------------------------------------------- forced colours -- */
+
+@media (forced-colors: active) {
+  .tree__check {
+    forced-color-adjust: none;
+    background: Canvas;
+    border-color: CanvasText;
+  }
+
+  .tree [aria-checked="true"] > .tree__row > .tree__check,
+  .tree [aria-checked="mixed"] > .tree__row > .tree__check {
+    background: Highlight;
+    border-color: Highlight;
+  }
+
+  .tree [aria-checked="true"] > .tree__row > .tree__check::after,
+  .tree [aria-checked="mixed"] > .tree__row > .tree__check::after {
+    border-color: HighlightText;
+  }
+
+  .tree__twisty::after {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+
+  .tree__twisty--leaf::after {
+    background-color: transparent;
+  }
+
+  .tree [role="treeitem"]:focus > .tree__row {
+    outline-color: Highlight;
+  }
+}
+
+/* ------------------------------------------------------------ key table -- */
+
+.keys {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 42rem;
+  text-align: start;
+}
+
+.keys th,
+.keys td {
+  border: 1px solid var(--c-rule);
+  padding: 0.4rem 0.6rem;
+  text-align: start;
+  vertical-align: top;
+}
+
+.keys thead th {
+  background: #f2f2f2;
+}
+
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  border: 1px solid var(--c-muted);
+  border-radius: 3px;
+  padding: 0.05em 0.35em;
+  white-space: nowrap;
+}

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accessible multi-select treeview &ndash; Eurostat prototype</title>
+<link rel="stylesheet" href="styles.css">
+<script src="treeview.js" defer></script>
+</head>
+<body>
+<main class="page">
+
+  <h1>Accessible multi-select treeview</h1>
+
+  <p class="intro">
+    This is a prototype of an accessible multi-select tree for filtering data by
+    geographic region. It follows the WAI-ARIA Authoring Practices Guide tree view
+    pattern: native tree semantics (<code>tree</code>, <code>treeitem</code>,
+    <code>group</code>), tri-state checkboxes expressed with
+    <code>aria-checked</code>, a roving tabindex, and full keyboard support. It is
+    built to behave correctly with NVDA + Chrome, JAWS + Chrome and
+    VoiceOver + Safari &ndash; in semantics and focus management, not only visually.
+    Plain HTML, CSS and JavaScript, no dependencies and no build step.
+  </p>
+
+  <h2 id="tree-label">Geographic regions</h2>
+
+  <p id="tree-status" class="tree-status" role="status" aria-live="polite" aria-atomic="true">
+    Selected: 0 of 20 regions
+  </p>
+
+  <!--
+    Every treeitem carries explicit aria-level / aria-posinset / aria-setsize.
+    Blink derives these reliably from the DOM, but WebKit often does not, and
+    VoiceOver then presents the tree as a flat outline with no depth cue.
+
+    Every treeitem also references two ids in aria-labelledby: the visible label,
+    and a visually hidden state span that treeview.js fills with "partially
+    selected" when aria-checked becomes "mixed". Safari/VoiceOver support for
+    aria-checked="mixed" on treeitem is unconfirmed, so the mixed state is also
+    carried in the accessible name as a belt-and-braces fallback.
+  -->
+  <ul id="region-tree" class="tree" role="tree" aria-multiselectable="true" aria-labelledby="tree-label">
+
+    <!-- ============================ Belgium ============================ -->
+    <li role="treeitem" aria-labelledby="lbl-be st-be" aria-expanded="true" aria-checked="false" aria-level="1" aria-posinset="1" aria-setsize="3" tabindex="0">
+      <span class="tree__row">
+        <span class="tree__twisty" aria-hidden="true"></span>
+        <span class="tree__check" aria-hidden="true"></span>
+        <span class="tree__label" id="lbl-be">Belgium</span>
+        <span class="visually-hidden" id="st-be"></span>
+      </span>
+      <ul role="group">
+
+        <li role="treeitem" aria-labelledby="lbl-be-vl st-be-vl" aria-expanded="true" aria-checked="false" aria-level="2" aria-posinset="1" aria-setsize="3" tabindex="-1">
+          <span class="tree__row">
+            <span class="tree__twisty" aria-hidden="true"></span>
+            <span class="tree__check" aria-hidden="true"></span>
+            <span class="tree__label" id="lbl-be-vl">Flemish Region</span>
+            <span class="visually-hidden" id="st-be-vl"></span>
+          </span>
+          <ul role="group">
+            <li role="treeitem" aria-labelledby="lbl-be-vl-ant st-be-vl-ant" aria-checked="false" aria-level="3" aria-posinset="1" aria-setsize="5" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-be-vl-ant">Antwerp</span>
+                <span class="visually-hidden" id="st-be-vl-ant"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-be-vl-ovl st-be-vl-ovl" aria-checked="false" aria-level="3" aria-posinset="2" aria-setsize="5" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-be-vl-ovl">East Flanders</span>
+                <span class="visually-hidden" id="st-be-vl-ovl"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-be-vl-vbr st-be-vl-vbr" aria-checked="false" aria-level="3" aria-posinset="3" aria-setsize="5" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-be-vl-vbr">Flemish Brabant</span>
+                <span class="visually-hidden" id="st-be-vl-vbr"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-be-vl-lim st-be-vl-lim" aria-checked="false" aria-level="3" aria-posinset="4" aria-setsize="5" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-be-vl-lim">Limburg</span>
+                <span class="visually-hidden" id="st-be-vl-lim"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-be-vl-wvl st-be-vl-wvl" aria-checked="false" aria-level="3" aria-posinset="5" aria-setsize="5" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-be-vl-wvl">West Flanders</span>
+                <span class="visually-hidden" id="st-be-vl-wvl"></span>
+              </span>
+            </li>
+          </ul>
+        </li>
+
+        <li role="treeitem" aria-labelledby="lbl-be-wa st-be-wa" aria-expanded="false" aria-checked="false" aria-level="2" aria-posinset="2" aria-setsize="3" tabindex="-1">
+          <span class="tree__row">
+            <span class="tree__twisty" aria-hidden="true"></span>
+            <span class="tree__check" aria-hidden="true"></span>
+            <span class="tree__label" id="lbl-be-wa">Walloon Region</span>
+            <span class="visually-hidden" id="st-be-wa"></span>
+          </span>
+          <ul role="group">
+            <li role="treeitem" aria-labelledby="lbl-be-wa-hai st-be-wa-hai" aria-checked="false" aria-level="3" aria-posinset="1" aria-setsize="5" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-be-wa-hai">Hainaut</span>
+                <span class="visually-hidden" id="st-be-wa-hai"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-be-wa-lie st-be-wa-lie" aria-checked="false" aria-level="3" aria-posinset="2" aria-setsize="5" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-be-wa-lie">Li&egrave;ge</span>
+                <span class="visually-hidden" id="st-be-wa-lie"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-be-wa-lux st-be-wa-lux" aria-checked="false" aria-level="3" aria-posinset="3" aria-setsize="5" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-be-wa-lux">Luxembourg</span>
+                <span class="visually-hidden" id="st-be-wa-lux"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-be-wa-nam st-be-wa-nam" aria-checked="false" aria-level="3" aria-posinset="4" aria-setsize="5" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-be-wa-nam">Namur</span>
+                <span class="visually-hidden" id="st-be-wa-nam"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-be-wa-bwa st-be-wa-bwa" aria-checked="false" aria-level="3" aria-posinset="5" aria-setsize="5" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-be-wa-bwa">Walloon Brabant</span>
+                <span class="visually-hidden" id="st-be-wa-bwa"></span>
+              </span>
+            </li>
+          </ul>
+        </li>
+
+        <li role="treeitem" aria-labelledby="lbl-be-bru st-be-bru" aria-checked="false" aria-level="2" aria-posinset="3" aria-setsize="3" tabindex="-1">
+          <span class="tree__row">
+            <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+            <span class="tree__check" aria-hidden="true"></span>
+            <span class="tree__label" id="lbl-be-bru">Brussels-Capital Region</span>
+            <span class="visually-hidden" id="st-be-bru"></span>
+          </span>
+        </li>
+
+      </ul>
+    </li>
+
+    <!-- ========================== Netherlands ========================== -->
+    <li role="treeitem" aria-labelledby="lbl-nl st-nl" aria-expanded="false" aria-checked="false" aria-level="1" aria-posinset="2" aria-setsize="3" tabindex="-1">
+      <span class="tree__row">
+        <span class="tree__twisty" aria-hidden="true"></span>
+        <span class="tree__check" aria-hidden="true"></span>
+        <span class="tree__label" id="lbl-nl">Netherlands</span>
+        <span class="visually-hidden" id="st-nl"></span>
+      </span>
+      <ul role="group">
+
+        <li role="treeitem" aria-labelledby="lbl-nl-n st-nl-n" aria-expanded="false" aria-checked="false" aria-level="2" aria-posinset="1" aria-setsize="2" tabindex="-1">
+          <span class="tree__row">
+            <span class="tree__twisty" aria-hidden="true"></span>
+            <span class="tree__check" aria-hidden="true"></span>
+            <span class="tree__label" id="lbl-nl-n">North Netherlands</span>
+            <span class="visually-hidden" id="st-nl-n"></span>
+          </span>
+          <ul role="group">
+            <li role="treeitem" aria-labelledby="lbl-nl-n-gr st-nl-n-gr" aria-checked="false" aria-level="3" aria-posinset="1" aria-setsize="3" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-nl-n-gr">Groningen</span>
+                <span class="visually-hidden" id="st-nl-n-gr"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-nl-n-fr st-nl-n-fr" aria-checked="false" aria-level="3" aria-posinset="2" aria-setsize="3" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-nl-n-fr">Friesland</span>
+                <span class="visually-hidden" id="st-nl-n-fr"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-nl-n-dr st-nl-n-dr" aria-checked="false" aria-level="3" aria-posinset="3" aria-setsize="3" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-nl-n-dr">Drenthe</span>
+                <span class="visually-hidden" id="st-nl-n-dr"></span>
+              </span>
+            </li>
+          </ul>
+        </li>
+
+        <li role="treeitem" aria-labelledby="lbl-nl-e st-nl-e" aria-expanded="false" aria-checked="false" aria-level="2" aria-posinset="2" aria-setsize="2" tabindex="-1">
+          <span class="tree__row">
+            <span class="tree__twisty" aria-hidden="true"></span>
+            <span class="tree__check" aria-hidden="true"></span>
+            <span class="tree__label" id="lbl-nl-e">East Netherlands</span>
+            <span class="visually-hidden" id="st-nl-e"></span>
+          </span>
+          <ul role="group">
+            <li role="treeitem" aria-labelledby="lbl-nl-e-ov st-nl-e-ov" aria-checked="false" aria-level="3" aria-posinset="1" aria-setsize="3" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-nl-e-ov">Overijssel</span>
+                <span class="visually-hidden" id="st-nl-e-ov"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-nl-e-ge st-nl-e-ge" aria-checked="false" aria-level="3" aria-posinset="2" aria-setsize="3" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-nl-e-ge">Gelderland</span>
+                <span class="visually-hidden" id="st-nl-e-ge"></span>
+              </span>
+            </li>
+            <li role="treeitem" aria-labelledby="lbl-nl-e-fl st-nl-e-fl" aria-checked="false" aria-level="3" aria-posinset="3" aria-setsize="3" tabindex="-1">
+              <span class="tree__row">
+                <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+                <span class="tree__check" aria-hidden="true"></span>
+                <span class="tree__label" id="lbl-nl-e-fl">Flevoland</span>
+                <span class="visually-hidden" id="st-nl-e-fl"></span>
+              </span>
+            </li>
+          </ul>
+        </li>
+
+      </ul>
+    </li>
+
+    <!-- ============================ Germany ============================ -->
+    <li role="treeitem" aria-labelledby="lbl-de st-de" aria-expanded="false" aria-checked="false" aria-level="1" aria-posinset="3" aria-setsize="3" tabindex="-1">
+      <span class="tree__row">
+        <span class="tree__twisty" aria-hidden="true"></span>
+        <span class="tree__check" aria-hidden="true"></span>
+        <span class="tree__label" id="lbl-de">Germany</span>
+        <span class="visually-hidden" id="st-de"></span>
+      </span>
+      <ul role="group">
+        <li role="treeitem" aria-labelledby="lbl-de-bw st-de-bw" aria-checked="false" aria-level="2" aria-posinset="1" aria-setsize="3" tabindex="-1">
+          <span class="tree__row">
+            <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+            <span class="tree__check" aria-hidden="true"></span>
+            <span class="tree__label" id="lbl-de-bw">Baden-W&uuml;rttemberg</span>
+            <span class="visually-hidden" id="st-de-bw"></span>
+          </span>
+        </li>
+        <li role="treeitem" aria-labelledby="lbl-de-by st-de-by" aria-checked="false" aria-level="2" aria-posinset="2" aria-setsize="3" tabindex="-1">
+          <span class="tree__row">
+            <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+            <span class="tree__check" aria-hidden="true"></span>
+            <span class="tree__label" id="lbl-de-by">Bavaria</span>
+            <span class="visually-hidden" id="st-de-by"></span>
+          </span>
+        </li>
+        <li role="treeitem" aria-labelledby="lbl-de-be st-de-be" aria-checked="false" aria-level="2" aria-posinset="3" aria-setsize="3" tabindex="-1">
+          <span class="tree__row">
+            <span class="tree__twisty tree__twisty--leaf" aria-hidden="true"></span>
+            <span class="tree__check" aria-hidden="true"></span>
+            <span class="tree__label" id="lbl-de-be">Berlin</span>
+            <span class="visually-hidden" id="st-de-be"></span>
+          </span>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+
+  <h2>Keyboard</h2>
+  <p class="note">
+    The tree is a single tab stop. Use <kbd>Tab</kbd> to reach it, then the keys below.
+  </p>
+  <table class="keys">
+    <caption class="visually-hidden">Keyboard support for the treeview</caption>
+    <thead>
+      <tr><th scope="col">Key</th><th scope="col">Action</th></tr>
+    </thead>
+    <tbody>
+      <tr><th scope="row"><kbd>Right Arrow</kbd></th><td>Expands a collapsed parent; on an expanded parent moves focus to its first child; does nothing on a leaf.</td></tr>
+      <tr><th scope="row"><kbd>Left Arrow</kbd></th><td>Collapses an expanded parent; otherwise moves focus to the parent node.</td></tr>
+      <tr><th scope="row"><kbd>Down Arrow</kbd> / <kbd>Up Arrow</kbd></th><td>Moves focus to the next / previous visible node.</td></tr>
+      <tr><th scope="row"><kbd>Home</kbd> / <kbd>End</kbd></th><td>Moves focus to the first / last visible node in the tree.</td></tr>
+      <tr><th scope="row"><kbd>Space</kbd> or <kbd>Enter</kbd></th><td>Toggles the checkbox of the focused node. Checking a parent checks all of its descendants; ancestors become checked, unchecked or partially checked.</td></tr>
+      <tr><th scope="row"><kbd>*</kbd></th><td>Expands all sibling nodes at the same level as the focused node.</td></tr>
+      <tr><th scope="row">Any printable character</th><td>Moves focus to the next visible node whose label starts with that character.</td></tr>
+    </tbody>
+  </table>
+
+</main>
+</body>
+</html>

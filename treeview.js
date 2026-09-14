@@ -14,8 +14,9 @@
      - A parent node's aria-checked value is always derived from its direct
        children; it is never set independently.
      - Every write of aria-checked goes through setCheckedState(), which also
-       maintains the visually hidden state span that carries "partially
-       selected" into the accessible name (a VoiceOver fallback for "mixed").
+       maintains the visually hidden state span that carries the depth and the
+       checked state into the accessible name ("level 3, not checked") - a
+       VoiceOver fallback, see the comment above setCheckedState().
      - The visible status paragraph is a polite live region; it is updated once
        per settled change, not once per node touched by a cascade. It counts
        leaf nodes only - 20 selectable regions, not the 27 nodes in the tree.
@@ -164,7 +165,11 @@
 
   /* ---------------------------------------------------------- checking ---- */
 
-  var MIXED_TEXT = ', partially selected';
+  var STATE_TEXT = {
+    'true': 'checked',
+    'false': 'not checked',
+    'mixed': 'partially selected'
+  };
 
   /**
    * The visually hidden state span of a treeitem: the second id listed in its
@@ -176,24 +181,48 @@
   }
 
   /**
+   * The text the hidden span carries for a given state, e.g.
+   * ", level 3, not checked". Comma-prefixed and comma-separated so that it
+   * reads with speech pauses after the visible label.
+   */
+  function stateTextFor(item, state) {
+    var parts = [];
+    var level = item.getAttribute('aria-level');
+    if (level) {
+      parts.push('level ' + level);
+    }
+    parts.push(STATE_TEXT[state] || STATE_TEXT['false']);
+    return ', ' + parts.join(', ');
+  }
+
+  /**
    * Single place where aria-checked is written.
    *
-   * Safari / VoiceOver support for aria-checked="mixed" on role="treeitem" is
-   * unconfirmed (see the history of WebKit bug 218316): a "mixed" parent may be
-   * announced as silently as an unchecked one. So the mixed state is mirrored
-   * into a visually hidden span that is part of the accessible name via
-   * aria-labelledby. The name becomes "Belgium" normally and
-   * "Belgium, partially selected" while mixed - in every screen reader, whether
-   * or not it understands the mixed state itself. NVDA and JAWS will say
-   * "partially checked" on top of that; a small redundancy is the price of the
-   * state never going unannounced. The span text is comma-prefixed so it reads
-   * with a pause, e.g. "Belgium, partially selected".
+   * Manual testing with VoiceOver + Safari on 14 September 2026 showed that
+   * VoiceOver announces neither aria-checked changes on role="treeitem" (not
+   * even plain true / false, let alone "mixed" - see the history of WebKit bug
+   * 218316) nor aria-level. Pressing Space produced no audible state change at
+   * all. aria-posinset / aria-setsize, on the other hand, are announced fine,
+   * so the "1 of 5" part is left to the platform.
+   *
+   * Everything VoiceOver does not announce is therefore mirrored into a
+   * visually hidden span that is part of the accessible name via
+   * aria-labelledby, because name text is read reliably by all three target
+   * screen readers regardless of their ARIA state support. The name becomes
+   * "Antwerp, level 3, not checked", which VoiceOver rounds off with its own
+   * "1 of 5".
+   *
+   * NVDA and JAWS may well announce aria-checked and aria-level correctly - not
+   * yet verified - and would then say the state twice. That redundancy is
+   * accepted on purpose: the project's rule, already applied to the mixed state
+   * before, is that a state going completely unannounced is far worse than one
+   * announced twice.
    */
   function setCheckedState(item, state) {
     item.setAttribute('aria-checked', state);
     var span = stateSpanOf(item);
     if (span) {
-      var text = state === 'mixed' ? MIXED_TEXT : '';
+      var text = stateTextFor(item, state);
       if (span.textContent !== text) {
         span.textContent = text;
       }

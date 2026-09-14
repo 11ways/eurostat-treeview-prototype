@@ -63,6 +63,11 @@ triangle to open or close a branch.
 - Unticking one province under a ticked country leaves the country **partly**
   ticked: the checkbox shows a dash instead of a check mark, and screen readers
   announce it as partially checked / partially selected.
+- Every node also carries its depth and its tick state as hidden text inside its
+  name, so the name you hear is "Antwerp, level 3, not checked" rather than bare
+  "Antwerp". See [What VoiceOver does not
+  announce](#what-voiceover-does-not-announce-confirmed-by-manual-testing) for
+  why.
 - The counter above the tree, "Selected: X of 20 regions", counts **provinces
   only**. Ticking all of Belgium therefore moves it to 11, not to 14, because
   "Belgium", "Flemish Region" and "Walloon Region" are groupings and not regions
@@ -84,7 +89,12 @@ specifically the **checkbox / multi-select variant** of it:
 - explicit `aria-level`, `aria-posinset` and `aria-setsize` on every node, so
   screen readers can say "level 2, 3 of 5" even when the browser does not work
   that out by itself;
-- a roving tabindex, so the tree is one tab stop.
+- a roving tabindex, so the tree is one tab stop;
+- on top of the ARIA states, a visually hidden span per node, merged into the
+  node's accessible name with `aria-labelledby`, that repeats the level and the
+  tick state in plain words (", level 3, not checked"). This is a deliberate
+  redundancy, added because VoiceOver announces neither of those two things by
+  itself. It is described in full below.
 
 Deliberately **not** used: real `<input type="checkbox">` elements inside the
 nodes. They would each become their own tab stop and break the single-tab-stop
@@ -100,46 +110,95 @@ Playwright and axe-core:
   clicks, and the "Selected: X of 20" counter;
 - axe-core 4.13: **0 violations, 0 incomplete**;
 - the structural ARIA: the browser's own accessibility tree reports the right
-  names, levels and checked values (`true` / `false` / `mixed`) for every node;
+  names, levels and checked values (`true` / `false` / `mixed`) for every node.
+  Re-checked on 14 September 2026 after the VoiceOver fix below: all 27 nodes
+  expose a name of the form "Antwerp, level 3, not checked", and it follows the
+  ticking cascade for leaves, fully ticked parents and partly ticked parents;
 - colour contrast, measured from the rendered page: text 15:1 or better (the AA
   threshold is 4.5:1), checkbox and triangle graphics 8:1 or better, focus ring
   7.2:1 (threshold 3:1);
 - target size: the triangle you click to open a branch is a 24x24 px target,
   which is the WCAG 2.2 AA minimum, with a clear gap to the checkbox next to it.
 
-**None of this tells us what a screen reader actually says out loud.** No screen
-reader is installed in the environment this was built in, and an automated tool
-cannot substitute for one. Real testing with **NVDA + Chrome**, **JAWS + Chrome**
-and **VoiceOver + Safari** is still required before this pattern goes into a
-production component.
+**None of that tells us what a screen reader actually says out loud**, so the
+prototype was also handed to a person with a real screen reader. The state of
+that work is:
 
-### The one thing to watch most closely: the "partly ticked" state in VoiceOver
+| Combination | Manually tested? | Result |
+| --- | --- | --- |
+| **VoiceOver + Safari** (macOS) | **Yes, 14 September 2026** | Two real gaps found, both now mitigated. Needs re-testing. |
+| **NVDA + Chrome** (Windows) | **Not yet** | Expected to work, unverified. |
+| **JAWS + Chrome** (Windows) | **Not yet** | Expected to work, unverified. |
 
-Safari and VoiceOver have a long history of not reporting `aria-checked="mixed"`
-on a tree item (see the history of WebKit bug 218316). If that support is still
-missing, a partly ticked country would be announced exactly like an unticked
-one, and a blind user would have no way to tell that they had selected half of
-Belgium.
+### What VoiceOver does not announce (confirmed by manual testing)
 
-This prototype defends against that: each node carries an extra, visually
-hidden piece of text that is empty normally and reads **"partially selected"**
-while the node is partly ticked, and that text is part of the node's name. So
-even a screen reader that ignores the `mixed` state still says something like
-"Belgium, partially selected, tree item". NVDA and JAWS, which do support the
-`mixed` state, will say both ("partially checked" plus the extra words) - a
-small amount of repetition that we accepted on purpose, because a state that
-goes completely unannounced is far worse than one announced twice.
+On **14 September 2026** this prototype was tested by hand with
+**VoiceOver + Safari**, not with automated tooling. Three findings, two of them
+problems:
 
-**When you test, please report back on exactly this:** what each screen reader
-says on a partly ticked country, and whether the repetition on NVDA and JAWS is
-acceptable or should be tuned.
+1. **`aria-checked` changes on `role="treeitem"` are not announced at all.**
+   Pressing <kbd>Space</kbd> on a node produced **no audible change** of
+   checked / unchecked. This is broader than the problem we had expected: it is
+   not only the `mixed` state (WebKit bug 218316) that goes missing, VoiceOver
+   does not reliably convey the plain `true` / `false` states on a tree item
+   either. A blind VoiceOver user therefore had no way at all to tell what they
+   had ticked.
+2. **`aria-level` is not announced at all.** The explicit `aria-level` on every
+   node, which exists precisely because WebKit often does not derive depth from
+   the DOM, did not reach the user either. The tree was heard as a flat list.
+3. `aria-posinset` / `aria-setsize` (the "1 of 5" position) **are** announced
+   correctly. That part is fine and is deliberately left to the platform, so it
+   is not duplicated anywhere.
+
+**Mitigation (now in the code).** Everything VoiceOver refuses to announce is
+mirrored into the node's **accessible name**, because name text is read
+reliably by every screen reader regardless of how well it supports the ARIA
+state itself. Each node has a visually hidden span that `treeview.js` keeps in
+sync and that is merged into the name via `aria-labelledby`. The name of a node
+is therefore always of the form:
+
+```
+<label>, level <n>, not checked      e.g. "Antwerp, level 3, not checked"
+<label>, level <n>, checked          e.g. "Antwerp, level 3, checked"
+<label>, level <n>, partially selected   e.g. "Belgium, level 1, partially selected"
+```
+
+VoiceOver rounds this off with its own position announcement, so what a tester
+hears is "Antwerp, level 3, not checked, 1 of 5".
+
+The cost is redundancy on screen readers that **do** support `aria-checked` and
+`aria-level`: NVDA and JAWS will probably say the state twice ("not checked"
+from the ARIA state and "not checked" from the name). That was accepted on
+purpose, and it is the same rule the prototype already followed for the mixed
+state: **a state that goes completely unannounced is far worse than one
+announced twice.** Whether the repetition is annoying enough to tune is a
+question for the NVDA and JAWS testers, not a reason to remove the fallback.
+
+**This mitigation has not itself been heard yet.** It was written after the
+VoiceOver session and verified only in Chromium (accessibility tree inspection
+plus axe-core, 0 violations). **It must be re-verified by running the updated
+VoiceOver script in section C below**, and the NVDA and JAWS scripts still need
+a first run.
 
 ## Manual test checklist
 
 You do not need any screen reader experience to run these. Work through the
-steps in order and write down what you hear. Where the expected wording is given,
-it is approximate: every screen reader phrases things slightly differently, and
-the point is whether the **information** is there, not the exact words.
+steps in order and write down what you hear.
+
+**How to read the expected wording.** The last round of testing found this
+checklist too vague to judge, so the VoiceOver section (C) now gives the
+**exact phrase** you should hear, in quotes. Judge it like this:
+
+- Text in `**bold quotes**` is the part that must match **word for word**. It
+  comes out of the page itself, so it cannot vary between screen readers.
+- Around it, each screen reader adds its own words for the role and the position
+  ("tree item", "1 of 5", "expanded", and so on). The order of those extras and
+  their exact wording may differ, and that is fine.
+- If a bold-quoted phrase is **missing or different**, that is a **fail**. Write
+  down what you heard instead, verbatim if you can.
+
+Sections A (NVDA) and B (JAWS) have **not been run yet**, so their expected
+wording is still a best guess and is marked as such.
 
 General tips before you start:
 
@@ -156,17 +215,30 @@ General tips before you start:
 
 ### A. NVDA + Chrome (Windows)
 
+> **Status: not yet tested.** Nobody has run this section with a real copy of
+> NVDA. The expected wording below is what we believe NVDA will say, not what
+> anyone has heard. Please correct it as you go.
+>
+> Because of the VoiceOver fix, every node's **name** now ends in ", level N,"
+> plus the tick state. NVDA is expected to announce its own "not checked" and
+> "level 3" **as well**, so you will probably hear the state and the level
+> **twice** per node. That is known and intentional. Please note in your report
+> whether the doubling is tolerable or irritating in normal use.
+
 1. Open `index.html` in Chrome.
 2. Start NVDA: <kbd>Control</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>. (To stop it
    later: <kbd>Insert</kbd>+<kbd>Q</kbd>, then Enter.)
 3. Press <kbd>Control</kbd>+<kbd>Home</kbd> to go to the top of the page, then
    press <kbd>Tab</kbd> until you hear something like **"Geographic regions,
-   tree, Belgium, tree item, not checked, level 1, 1 of 3, expanded"**.
-   - Check: does it say "tree" and "tree item"? Does it say a **level**? Does it
-     say **"not checked"**? All three must be there.
-4. Press <kbd>Down Arrow</kbd> a few times. You should hear each node announced
-   with its own name and level, going deeper as you enter Belgium
-   ("Flemish Region, level 2", "Antwerp, level 3", ...).
+   tree, Belgium, level 1, not checked, tree item, not checked, level 1, 1 of 3,
+   expanded"**.
+   - The part that must be there word for word is the name:
+     **"Belgium, level 1, not checked"**.
+   - Everything after it is NVDA's own doing. Note down how much of it is
+     repeated.
+4. Press <kbd>Down Arrow</kbd> a few times. Each node should be announced with
+   its own name, which now carries the depth: **"Flemish Region, level 2, not
+   checked"**, then **"Antwerp, level 3, not checked"**, and so on.
 5. Press <kbd>Up Arrow</kbd> back to **Belgium**, then press <kbd>Left Arrow</kbd>.
    - Expected: you hear **"collapsed"**, and the provinces disappear from the screen.
 6. Press <kbd>Right Arrow</kbd>.
@@ -174,14 +246,17 @@ General tips before you start:
 7. Press <kbd>Down Arrow</kbd> to "Flemish Region", <kbd>Right Arrow</kbd> to
    move into it, and <kbd>Down Arrow</kbd> until you are on **Antwerp**.
 8. Press <kbd>Space</kbd>.
-   - Expected: you hear **"checked"** (or "selected"). A moment later you should
-     also hear **"Selected: 1 of 20 regions"** read out automatically. Check the
-     text above the tree on screen: it should show the same.
-9. Press <kbd>Space</kbd> again to untick it, and confirm you hear
-   **"not checked"** and the counter goes back to 0.
+   - Expected: NVDA re-announces the node with its new name,
+     **"Antwerp, level 3, checked"**, or at least says **"checked"**. A moment
+     later you should also hear **"Selected: 1 of 20 regions"** read out
+     automatically. Check the text above the tree on screen: it should show the
+     same.
+9. Press <kbd>Space</kbd> again to untick it. Expected:
+   **"Antwerp, level 3, not checked"** (or at least "not checked"), and the
+   counter goes back to **"Selected: 0 of 20 regions"**.
 10. Go up to **Belgium** (<kbd>Home</kbd> is the quickest) and press
     <kbd>Space</kbd>.
-    - Expected: **"checked"**, and the counter announces
+    - Expected: **"Belgium, level 1, checked"**, and the counter announces
       **"Selected: 11 of 20 regions"** - 11, because Belgium has 11 provinces.
       It must not say 14.
 11. Now move down to any one province under Belgium and press <kbd>Space</kbd>
@@ -189,11 +264,12 @@ General tips before you start:
 12. Press <kbd>Home</kbd> to move back to **Belgium**. (Using <kbd>Left Arrow</kbd>
     also works, but on an open branch the first press closes it instead of
     moving up, so <kbd>Home</kbd> is less confusing here.)
-    - Expected: Belgium is announced as **"partially checked"** or
-      **"half checked"**, and/or you hear the words **"partially selected"** in
-      its name. Write down the exact wording.
-    - Also check the region in between (for example "Flemish Region"): it should
-      be partly ticked too.
+    - Expected, word for word, as part of the name:
+      **"Belgium, level 1, partially selected"**. NVDA will most likely add its
+      own **"partially checked"** or **"half checked"** on top. Write down the
+      exact wording of both.
+    - Also check the region in between: **"Flemish Region, level 2, partially
+      selected"**.
 13. Press <kbd>End</kbd>.
     - Expected: focus lands on the **last** visible node ("Germany" if nothing
       else is open) and it is announced.
@@ -210,74 +286,179 @@ General tips before you start:
 
 ### B. JAWS + Chrome (Windows)
 
+> **Status: not yet tested**, exactly as for NVDA above. The same warning about
+> hearing the state and level twice applies.
+
 Run exactly the same steps 1 to 17 as for NVDA, with these differences:
 
 - Start JAWS from the desktop icon or with
   <kbd>Insert</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd>; stop it with
   <kbd>Insert</kbd>+<kbd>F4</kbd>.
 - The mode switch key is <kbd>Insert</kbd>+<kbd>Z</kbd>.
-- JAWS tends to say "tree view" rather than "tree", and "half checked" or
-  "partially checked" for the partly ticked state. Any of those is fine; what
-  matters is that it says *something* other than plain "not checked".
+- The bold-quoted names are identical to section A, because they come from the
+  page: **"Antwerp, level 3, not checked"**, **"Antwerp, level 3, checked"**,
+  **"Belgium, level 1, partially selected"**.
+- JAWS tends to say "tree view" rather than "tree", and adds "half checked" or
+  "partially checked" of its own for the partly ticked state. Any of those is
+  fine on top of the name.
 - JAWS may add "to expand press right arrow" style hints. That is expected.
 
-### C. VoiceOver + Safari (macOS)
+### C. VoiceOver + Safari (macOS) - re-test of the 14 September 2026 fix
 
-This is the combination most likely to show problems, so please go slowly here.
+**Read this first.** On 14 September 2026 this combination was tested by hand
+and two things were found to be completely silent: the checked / unchecked
+state, and the level. Both are now carried in the node's **name** instead, so
+this run is about one question: **do you now hear the level and the state, in
+words, on every node?**
+
+Every phrase in `**bold quotes**` below is text that comes straight out of the
+page. It cannot vary between screen readers, so it must match **word for word**.
+VoiceOver will wrap its own words around it ("tree item", "1 of 3", "expanded",
+"selected"). Those extras may come in any order and are not what you are
+judging.
+
+The page opens with Belgium and Flemish Region already open, and nothing ticked.
+If you have clicked around, reload the page with <kbd>Command</kbd>+<kbd>R</kbd>
+before you start.
+
+#### Setup
 
 1. Open `index.html` in Safari.
 2. Start VoiceOver: <kbd>Command</kbd>+<kbd>F5</kbd>. (The same shortcut stops it.)
 3. If a "Welcome to VoiceOver" dialog appears, press <kbd>V</kbd> to skip it.
 4. Make sure Safari can Tab to everything: Safari menu > Settings > Advanced >
    tick **"Press Tab to highlight each item on a webpage"**.
-5. Press <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>A</kbd> to have the page read
-   from the top, then <kbd>Control</kbd> to stop the reading.
-6. Press <kbd>Tab</kbd> until you reach the tree. Expected: something like
-   **"Belgium, tree item, level 1, 1 of 3, expanded, unchecked"**.
-   - Check specifically: **is a level announced?** VoiceOver sometimes presents a
-     tree as a flat list. The prototype sets the level explicitly to prevent
-     that, so this is a direct test of that fix.
-7. Press <kbd>Down Arrow</kbd> and <kbd>Up Arrow</kbd> to walk through the
-   visible nodes, and check that each one is announced with its own name (not
-   with the names of everything underneath it glued on).
-8. On **Belgium**, press <kbd>Left Arrow</kbd> then <kbd>Right Arrow</kbd>.
-   - Expected: "collapsed" and "expanded" announcements, matching what you see.
-9. Navigate to any single province and press <kbd>Space</kbd>.
-   - Expected: you hear **"checked"** or **"selected"**, and shortly after
-     **"Selected: 1 of 20 regions"**.
-   - If <kbd>Space</kbd> does nothing, VoiceOver may be intercepting it: try
-     <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Space</kbd> instead, and note in
-     your report which one worked.
-10. Press <kbd>Home</kbd> to get back to Belgium, press <kbd>Space</kbd> to tick
-    the whole country, and confirm you hear **"Selected: 11 of 20 regions"**.
-11. **The key test.** Untick one single province under Belgium, then move back
-    to **Belgium** itself.
-    - Expected: you hear either **"partially checked" / "mixed"**, or at minimum
-      the words **"partially selected"** as part of the name
-      ("Belgium, partially selected, tree item").
-    - **If you hear neither**, write that down and flag it - that is exactly the
-      VoiceOver gap this prototype is trying to cover, and it means the fallback
-      is not working either.
-12. Check the same thing on the region in between ("Flemish Region").
-13. Press <kbd>End</kbd> and <kbd>Home</kbd> and confirm focus jumps to the last
-    and the first visible node.
-14. Press <kbd>n</kbd> and confirm focus jumps to "Netherlands". (If VoiceOver's
-    Quick Nav is on, single letters are captured by VoiceOver itself. Turn Quick
-    Nav off by pressing <kbd>Left Arrow</kbd>+<kbd>Right Arrow</kbd> together,
-    then try again.)
-15. Press <kbd>Tab</kbd> and confirm you leave the tree in a single press.
-16. Finally, open VoiceOver's rotor with
-    <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>U</kbd> and check that the page
-    structure looks sane. Close it with <kbd>Escape</kbd>.
+5. If VoiceOver's Quick Nav is on, single letters and arrow keys get captured by
+   VoiceOver itself. Turn Quick Nav **off** now by pressing <kbd>Left Arrow</kbd>
+   and <kbd>Right Arrow</kbd> together.
+
+#### C1. Entering the tree: is the level there?
+
+6. Press <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>A</kbd> to read the page from
+   the top, then <kbd>Control</kbd> to stop the reading.
+7. Press <kbd>Tab</kbd> until focus lands in the tree, on Belgium.
+   - **Expect to hear:** **"Belgium, level 1, not checked"**, followed by
+     VoiceOver's own "tree item", "1 of 3" and "expanded" in some order.
+   - **Pass** if the words "level 1" and "not checked" are in there.
+   - **Fail** if you hear only "Belgium" and then role and position. Write down
+     the whole utterance.
+
+#### C2. Walking down: does every node say its own level and state?
+
+8. Press <kbd>Down Arrow</kbd> four times, one press at a time, and check each
+   one against this list. These are the first five visible nodes on a freshly
+   loaded page:
+
+   | Press | **Expect to hear (must match)** | VoiceOver may add |
+   | --- | --- | --- |
+   | (start) | **"Belgium, level 1, not checked"** | tree item, 1 of 3, expanded |
+   | 1 | **"Flemish Region, level 2, not checked"** | tree item, 1 of 3, expanded |
+   | 2 | **"Antwerp, level 3, not checked"** | tree item, 1 of 5 |
+   | 3 | **"East Flanders, level 3, not checked"** | tree item, 2 of 5 |
+   | 4 | **"Flemish Brabant, level 3, not checked"** | tree item, 3 of 5 |
+
+   - The "1 of 5" / "2 of 5" part was already working before and should still be
+     there. If it has disappeared, that is a regression: report it.
+   - Each node must be announced with **its own name only**, never with the
+     names of everything underneath it glued on.
+
+#### C3. Ticking a single province: is the change audible at all?
+
+9. You should now be on **Flemish Brabant**. Press <kbd>Up Arrow</kbd> twice to
+   get back to **Antwerp** (**"Antwerp, level 3, not checked"**).
+10. Press <kbd>Space</kbd>.
+    - **Expect to hear:** **"Antwerp, level 3, checked"**.
+    - Roughly half a second later, separately: **"Selected: 1 of 20 regions"**.
+    - **This is the single most important step in the whole script.** In the
+      previous round, pressing Space here was completely silent about the state.
+      If you again hear no word for the state, the fix has failed: write down
+      exactly what you heard and stop to report it.
+    - If <kbd>Space</kbd> does nothing at all, VoiceOver may be swallowing it:
+      try <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Space</kbd> instead, and note
+      in your report which one worked.
+11. Press <kbd>Space</kbd> again to untick it.
+    - **Expect to hear:** **"Antwerp, level 3, not checked"**, then
+      **"Selected: 0 of 20 regions"**.
+
+#### C4. Ticking a whole country
+
+12. Press <kbd>Home</kbd> to jump back to the top of the tree.
+    - **Expect to hear:** **"Belgium, level 1, not checked"**.
+13. Press <kbd>Space</kbd>.
+    - **Expect to hear:** **"Belgium, level 1, checked"**.
+    - Then: **"Selected: 11 of 20 regions"**. It must say **11**, not 14: the
+      country and the two regions are groupings, not selectable regions.
+14. Press <kbd>Down Arrow</kbd> twice, to Flemish Region and then to Antwerp.
+    - **Expect to hear:** **"Flemish Region, level 2, checked"** and then
+      **"Antwerp, level 3, checked"**. The tick cascaded downwards.
+
+#### C5. The partly ticked state
+
+15. You are on **Antwerp**, which is ticked. Press <kbd>Space</kbd> to untick
+    just this one province.
+    - **Expect to hear:** **"Antwerp, level 3, not checked"**, then
+      **"Selected: 10 of 20 regions"**.
+16. Press <kbd>Up Arrow</kbd> once, to its parent's level, and then
+    <kbd>Home</kbd> to get to Belgium. Check both of these:
+    - On the way, **"Flemish Region, level 2, partially selected"**.
+    - On arrival, **"Belgium, level 1, partially selected"**.
+    - VoiceOver may add "mixed" or "partially checked" of its own. Note it if it
+      does, but the bold phrase is what decides pass or fail.
+    - **Fail** if either one is announced the same as an unticked node. That
+      would mean a user cannot tell "half of Belgium selected" from "none of
+      Belgium selected".
+17. Press <kbd>Space</kbd> on Belgium to tick it fully again.
+    - **Expect to hear:** **"Belgium, level 1, checked"**, then
+      **"Selected: 11 of 20 regions"**.
+
+#### C6. Opening and closing, and moving about
+
+18. On **Belgium**, press <kbd>Left Arrow</kbd>.
+    - **Expect to hear:** **"collapsed"** (VoiceOver's own word), and the
+      provinces disappear from the screen. The name **"Belgium, level 1,
+      checked"** may be repeated with it.
+19. Press <kbd>Right Arrow</kbd>.
+    - **Expect to hear:** **"expanded"**, and the list underneath comes back.
+20. Press <kbd>End</kbd>.
+    - Focus should land on the **last** visible node in the whole tree and
+      announce it. With the Netherlands and Germany still closed, that is
+      **"Germany, level 1, not checked"**. If you have opened other branches, it
+      is whatever is visually last.
+21. Press <kbd>Home</kbd>.
+    - **Expect to hear:** **"Belgium, level 1, checked"**.
+22. Press the letter <kbd>n</kbd>.
+    - **Expect to hear:** **"Netherlands, level 1, not checked"**.
+    - If nothing happens, Quick Nav is back on: press <kbd>Left Arrow</kbd> and
+      <kbd>Right Arrow</kbd> together and try again.
+23. Press <kbd>Home</kbd>, then press <kbd>w</kbd> and <kbd>a</kbd> quickly one
+    after the other.
+    - **Expect to hear:** **"Walloon Region, level 2, checked"**.
+24. Press <kbd>Tab</kbd> once.
+    - Focus must leave the tree **entirely in one press**. It must not step to
+      the next node in the tree.
+25. Finally, open VoiceOver's rotor with
+    <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>U</kbd>, check that the page
+    structure looks sane, and close it with <kbd>Escape</kbd>.
+
+#### C7. Is it too wordy?
+
+26. Walk down ten or so nodes at a normal pace and judge one thing: is
+    "Antwerp, level 3, not checked, tree item, 1 of 5" **usable**, or is it so
+    long that moving through the tree becomes tiring? We can shorten the wording
+    (for example drop "level" and say only the number), but only if you tell us
+    it is a problem.
 
 ### What to send back
 
 For each of the three combinations, please note:
 
-1. Which steps behaved as expected.
-2. The **exact wording** you heard for: a normal node, a ticked node, and a
-   partly ticked country.
-3. Whether the level ("level 1", "level 2", ...) was announced.
+1. Which steps behaved as expected, by their number (C1, C3, step 10, ...).
+2. The **exact wording** you heard for: an unticked node, a ticked node, and a
+   partly ticked country. Verbatim, including the extra words the screen reader
+   added.
+3. Whether the level ("level 1", "level 2", ...) was heard on every node.
 4. Whether the "Selected: X of 20 regions" message was read out by itself after
    ticking, without you going to look for it.
-5. Anything that was silent, confusing, or read twice in an annoying way.
+5. Whether the "X of Y" position ("1 of 5") is still announced.
+6. Anything that was silent, confusing, or read twice in an annoying way, and
+   your answer to step 26 about the overall length.

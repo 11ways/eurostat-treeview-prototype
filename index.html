@@ -35,10 +35,13 @@
     VoiceOver then presents the tree as a flat outline with no depth cue.
 
     Every treeitem also references two ids in aria-labelledby: the visible label,
-    and a visually hidden state span that treeview.js fills with "partially
-    selected" when aria-checked becomes "mixed". Safari/VoiceOver support for
-    aria-checked="mixed" on treeitem is unconfirmed, so the mixed state is also
-    carried in the accessible name as a belt-and-braces fallback.
+    and a visually hidden state span that treeview.js fills with the depth and
+    the checked state, e.g. ", level 3, not checked". Manual VoiceOver + Safari
+    testing (14 September 2026) found that neither aria-checked changes nor
+    aria-level are announced on a treeitem, so both are carried in the accessible
+    name as well. aria-posinset / aria-setsize are announced correctly and are
+    deliberately not duplicated. The spans start out empty; treeview.js fills all
+    27 of them on load, so the markup can never disagree with the script.
   -->
   <ul id="region-tree" class="tree" role="tree" aria-multiselectable="true" aria-labelledby="tree-label">
 

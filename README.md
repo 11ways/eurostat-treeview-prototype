@@ -332,6 +332,29 @@ before you start.
    VoiceOver itself. Turn Quick Nav **off** now by pressing <kbd>Left Arrow</kbd>
    and <kbd>Right Arrow</kbd> together.
 
+> **Before you go further: two different ways of moving around, only one of
+> which works on this tree.**
+>
+> - <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Arrow</kbd> moves VoiceOver's own
+>   reading cursor through the page in document order, regardless of real
+>   keyboard focus. It is meant for *reading* a page, not for operating a
+>   custom widget - it will walk straight through Belgium's already-open
+>   branches and land deep inside, e.g. on "Flemish Brabant", several nodes
+>   past Belgium, and pressing <kbd>Space</kbd> there will tick Flemish
+>   Brabant, not Belgium. That is VoiceOver's normal behaviour for nested
+>   lists, not a bug in the tree - it is simply the wrong tool for this job.
+> - Plain <kbd>Arrow</kbd> keys (no <kbd>Control</kbd>+<kbd>Option</kbd>) are
+>   what the tree actually listens to, and they only work once real keyboard
+>   focus is on a node inside it.
+>
+> So: use <kbd>Tab</kbd> (step 7 below) to place real focus on Belgium, then
+> stay on plain arrow keys for every step in C1-C7. Only reach for
+> <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>Arrow</kbd> for step 6, to read the
+> page before you start - not once you are inside the tree. If you catch
+> yourself using it again mid-test and land somewhere unexpected, that is this
+> mix-up, not a new finding: press <kbd>Tab</kbd> back out and back in, or
+> reload with <kbd>Command</kbd>+<kbd>R</kbd>, and continue with plain arrows.
+
 #### C1. Entering the tree: is the level there?
 
 6. Press <kbd>Control</kbd>+<kbd>Option</kbd>+<kbd>A</kbd> to read the page from
